@@ -1,0 +1,2 @@
+# CodinGame
+CodinGameのゲームAIコンテスト用コードを保存するリポジトリ
