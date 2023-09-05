@@ -10,7 +10,7 @@ class Player
 	static void Main(string[] args)
 	{
 		string[] inputs;
-		GameBoard gameboard = new GameBoard();
+		GameBoard _gameBoard = new GameBoard();
 
 		// ゲームループ
 		while (true)
@@ -22,11 +22,9 @@ class Player
 			// 先攻時は相手の手がないので-1が入る
 			if (opponentRow != -1 && opponentCol != -1)
 			{
-				gameboard.Advance(opponentRow, opponentCol);
+				_gameBoard.Advance(opponentRow, opponentCol);
 			}
 			int validActionCount = int.Parse(Console.ReadLine());
-			string move = "";
-			// 各合法手について処理
 			for (int i = 0; i < validActionCount; i++)
 			{
 				inputs = Console.ReadLine().Split(' ');
@@ -34,13 +32,72 @@ class Player
 				int col = int.Parse(inputs[1]);
 			}
 
-			var moves = gameboard.GetLegalMoves();
-			var moveRow = moves[0].Item1;
-			var moveCol = moves[0].Item2;
-			gameboard.Advance(moveRow, moveCol);
-			move = moveRow.ToString() + " " + moveCol.ToString();
+			// 最善手を取得
+			var bestMove = GetAlphaBetaBestMove(_gameBoard, 5);
+			var moveRow = bestMove.Item1;
+			var moveCol = bestMove.Item2;
+
+			// 最善手を着手
+			_gameBoard.Advance(moveRow, moveCol);
+			string move = moveRow.ToString() + " " + moveCol.ToString();
 			Console.WriteLine(move);
 		}
+	}
+
+	// AlphaBeta法で最善手を探索
+	private static ValueTuple<int,int> GetAlphaBetaBestMove(GameBoard gameBoard, int depth)
+	{
+		var moves = gameBoard.GetLegalMoves();
+		var bestMove = moves[0];
+		var alpha = -100;
+		var beta = 100;
+
+		foreach (var move in moves)
+		{
+			var newGameBoard = gameBoard.Clone();
+			newGameBoard.Advance(move.Item1, move.Item2);
+			var score = -GetAlphaBetaScore(newGameBoard, -beta, -alpha, depth - 1);
+			if (score > alpha)
+			{
+				alpha = score;
+				bestMove = move;
+			}
+		}
+
+		return bestMove;
+	}
+
+	// AlphaBeta法で盤面評価値を計算
+	private static int GetAlphaBetaScore(GameBoard gameBoard, int alpha, int beta, int depth)
+	{
+		if (gameBoard.IsGameOver() || depth == 0)
+		{
+			return gameBoard.Evaluate();
+		}
+
+		var moves = gameBoard.GetLegalMoves();
+
+		if (moves.Count == 0)
+		{
+			return gameBoard.Evaluate();
+		}
+
+		foreach (var move in moves)
+		{
+			var newGameBoard = gameBoard.Clone();
+			newGameBoard.Advance(move.Item1, move.Item2);
+			var score = -GetAlphaBetaScore(newGameBoard, -beta, -alpha, depth - 1);
+			if (score >= beta)
+			{
+				return beta;
+			}
+			if (score > alpha)
+			{
+				alpha = score;
+			}
+		}
+
+		return alpha;
 	}
 }
 
@@ -59,6 +116,7 @@ class GameBoard
 
 	private int[,] _board = new int[3,3];
 	private GameStatus gameStatus = GameStatus.BlackTurn;
+	private bool isBlackPerspective = true;
 
 	public GameBoard()
 	{
@@ -72,6 +130,7 @@ class GameBoard
 		}
 	}
 
+	// 局面を1手進める
 	public void Advance(int row, int col)
 	{
 		if (gameStatus == GameStatus.BlackTurn)
@@ -84,8 +143,11 @@ class GameBoard
 			
 		}
 		UpdateGameStatus();
+		// 視点を入れ替える
+		isBlackPerspective = !isBlackPerspective;
 	}
 
+	// 合法手のリストを返す
 	public List<ValueTuple<int,int>> GetLegalMoves()
 	{
 		List<ValueTuple<int,int>> legalMoves = new List<ValueTuple<int,int>>();
@@ -102,6 +164,7 @@ class GameBoard
 		return legalMoves;
 	}
 
+	// ゲームの状態を更新する
 	public void UpdateGameStatus()
 	{
 		// 横のチェック
@@ -192,13 +255,27 @@ class GameBoard
 		}
 	}
 
+	// ゲームが終了しているかどうかを返す
+	public bool IsGameOver()
+	{
+		if (gameStatus == GameStatus.BlackWin || gameStatus == GameStatus.WhiteWin || gameStatus == GameStatus.Draw)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	// 盤面評価（先攻視点ならtrue、後攻視点ならfalseが引数）
 	public int Evaluate()
 	{
 		int score = 0;
 		switch (gameStatus)
 		{
 			case GameStatus.BlackWin:
-				if(gameStatus == GameStatus.BlackTurn)
+				if(isBlackPerspective)
 				{
 					score = 1;
 				}
@@ -208,13 +285,13 @@ class GameBoard
 				}
 				break;
 			case GameStatus.WhiteWin:
-				if(gameStatus == GameStatus.WhiteTurn)
+				if(isBlackPerspective)
 				{
-					score = 1;
+					score = -1;
 				}
 				else
 				{
-					score = -1;
+					score = 1;
 				}
 				break;
 			default:
@@ -224,6 +301,7 @@ class GameBoard
 		return score;
 	}
 
+	// 盤面を複製する（ディープコピー用）
 	public GameBoard Clone()
 	{
 		GameBoard clone = new GameBoard();
