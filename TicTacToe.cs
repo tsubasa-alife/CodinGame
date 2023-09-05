@@ -33,7 +33,8 @@ class Player
 			}
 
 			// 最善手を取得
-			var bestMove = GetAlphaBetaBestMove(_gameBoard, 5);
+			_gameBoard.PrintBoard();
+			var bestMove = GetAlphaBetaBestMove(_gameBoard, 10);
 			var moveRow = bestMove.Item1;
 			var moveCol = bestMove.Item2;
 
@@ -301,12 +302,30 @@ class GameBoard
 		return score;
 	}
 
+	// 盤面を表示する
+	public void PrintBoard()
+	{
+		Console.Error.WriteLine("GameStatus: " + gameStatus.ToString());
+		Console.Error.WriteLine("isBlackPerspective: " + isBlackPerspective.ToString());
+		Console.Error.WriteLine("Board:");
+		for (int row = 0; row < 3; row++)
+		{
+			string line = "";
+			for (int col = 0; col < 3; col++)
+			{
+				line += _board[row,col].ToString();
+			}
+			Console.Error.WriteLine(line);
+		}
+	}
+
 	// 盤面を複製する（ディープコピー用）
 	public GameBoard Clone()
 	{
 		GameBoard clone = new GameBoard();
 		clone._board = (int[,])_board.Clone();
 		clone.gameStatus = gameStatus;
+		clone.isBlackPerspective = isBlackPerspective;
 		return clone;
 	}
 }
