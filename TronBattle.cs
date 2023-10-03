@@ -46,9 +46,33 @@ class Player
 			// 合法手を取得
 			var actions = game.GetLegalActions();
 
-			// 合法手からランダムに選択
-			var random = new Random();
-			var action = actions[random.Next(actions.Count)];
+			// 合法手から最大の空きマス数を持つ手を取得
+			var maxEmptyCount = 0;
+			var action = actions[0];
+			foreach (var act in actions)
+			{
+				var emptyCount = 0;
+				switch (act)
+				{
+					case TronAction.Left:
+						emptyCount = game.GetEmptyCount(game.nowX - 1, game.nowY);
+						break;
+					case TronAction.Up:
+						emptyCount = game.GetEmptyCount(game.nowX, game.nowY - 1);
+						break;
+					case TronAction.Right:
+						emptyCount = game.GetEmptyCount(game.nowX + 1, game.nowY);
+						break;
+					case TronAction.Down:
+						emptyCount = game.GetEmptyCount(game.nowX, game.nowY + 1);
+						break;
+				}
+				if (emptyCount > maxEmptyCount)
+				{
+					maxEmptyCount = emptyCount;
+					action = act;
+				}
+			}
 
 			// 着手
 			game.Advance(action);
@@ -115,6 +139,47 @@ public class TronGame
 		return actions;
 	}
 
+	// 指定した場所から移動可能な空きマスの数を深さ優先探索で取得する
+	// FloodFillを使うが、再帰で実装するとスタックオーバーフローするので、スタックを使う
+	public int GetEmptyCount(int x, int y)
+	{
+		var boardClone = (int[,])board.Clone();
+		var stack = new Stack<ValueTuple<int,int>>();
+		stack.Push(new ValueTuple<int,int>(x,y));
+		var emptyCount = 0;
+		while (stack.Count > 0)
+		{
+			var pos = stack.Pop();
+			var posX = pos.Item1;
+			var posY = pos.Item2;
+			if (boardClone[posY,posX] == -1)
+			{
+				emptyCount++;
+				boardClone[posY,posX] = 0;
+				if (posX > 0 && boardClone[posY,posX - 1] == -1)
+				{
+					stack.Push(new ValueTuple<int,int>(posX - 1,posY));
+				}
+				if (posY > 0 && boardClone[posY - 1,posX] == -1)
+				{
+					stack.Push(new ValueTuple<int,int>(posX,posY - 1));
+				}
+				if (posX < 29 && boardClone[posY,posX + 1] == -1)
+				{
+					stack.Push(new ValueTuple<int,int>(posX + 1,posY));
+				}
+				if (posY < 19 && boardClone[posY + 1,posX] == -1)
+				{
+					stack.Push(new ValueTuple<int,int>(posX,posY + 1));
+				}
+			}
+		}
+
+		return emptyCount;
+	}
+
+
+
 	public void Advance(TronAction action)
 	{
 		switch (action)
@@ -136,6 +201,15 @@ public class TronGame
 				Console.WriteLine("DOWN");
 				break;
 		}
+	}
+
+	public TronGame Clone()
+	{
+		var clone = new TronGame();
+		clone.board = (int[,])board.Clone();
+		clone.nowX = nowX;
+		clone.nowY = nowY;
+		return clone;
 	}
 
 }
