@@ -60,7 +60,7 @@ class Player
 			// 行動を決定
 			// 開発者、営業、マネージャーを雇う数＋メンテナンス開発者＋シェアを奪うための営業数（＋ターゲットID）
 			int devsToHire = 0;
-			int sellerToHire = 0;
+			int sellersToHire = 0;
 			int managersToHire = 0;
 			int maintenanceDevs = 0;
 			int competitiveSellers = 0;
@@ -83,26 +83,26 @@ class Player
 					maintenanceDevs = 2;
 				}
 				
-				int sellerHireLimit = managers * 2 - devsToHire;
+				int sellersHireLimit = managers * 2 - devsToHire;
 				// 販売ができるようになったら営業を雇う
 				if (myMarketShare < 100)
 				{
-					sellerToHire = Math.Min(2, sellerHireLimit);
+					sellersToHire = Math.Min(2, sellersHireLimit);
 					competitiveSellers = sellers / 2;
 				}
 				else if (myMarketShare < 300)
 				{
-					sellerToHire = Math.Min(10, sellerHireLimit);
+					sellersToHire = sellersHireLimit;
 					competitiveSellers = sellers * 2 / 3;
 				}
 				else if (myMarketShare < 500)
 				{
-					sellerToHire = Math.Min(50, sellerHireLimit);
+					sellersToHire = sellersHireLimit;
 					competitiveSellers = sellers * 3 / 4;
 				}
 				else 
 				{
-					sellerToHire = Math.Min(100, sellerHireLimit);
+					sellersToHire = sellersHireLimit;
 					competitiveSellers = sellers * 4 / 5;
 				}
 				
@@ -116,26 +116,30 @@ class Player
 			}
 
 			// マネージャーは従業員4人につき1人
-			if (managers <= (devs + sellers + devsToHire + sellerToHire)/4 || managers == 0)
+			if (managers <= (devs + sellers + devsToHire + sellersToHire)/4 || managers == 0)
 			{
 				managersToHire = 1;
 			}
+			else if (managers > (devs + sellers + devsToHire + sellersToHire)/4 && features > 10)
+			{
+				managersToHire = -1;
+			}
 
 			// 行動出力
-			string action = GetAction(devsToHire, sellerToHire, managersToHire, maintenanceDevs, competitiveSellers, targetId);
+			string action = GetAction(devsToHire, sellersToHire, managersToHire, maintenanceDevs, competitiveSellers, targetId);
 			Console.WriteLine(action);
 		}
 	}
 
-	private static string GetAction(int devsToHire, int sellerToHire, int managersToHire, int maintenanceDevs, int competitiveSellers, int targetId = -1)
+	private static string GetAction(int devsToHire, int sellersToHire, int managersToHire, int maintenanceDevs, int competitiveSellers, int targetId = -1)
 	{
 		if (targetId == -1)
 		{
-			return devsToHire + " " + sellerToHire + " " + managersToHire + " " + maintenanceDevs + " " + competitiveSellers;
+			return devsToHire + " " + sellersToHire + " " + managersToHire + " " + maintenanceDevs + " " + competitiveSellers;
 		}
 		else
 		{
-			return devsToHire + " " + sellerToHire + " " + managersToHire + " " + maintenanceDevs + " " + competitiveSellers + " " + targetId;
+			return devsToHire + " " + sellersToHire + " " + managersToHire + " " + maintenanceDevs + " " + competitiveSellers + " " + targetId;
 		}
 	}
 }
