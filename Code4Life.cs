@@ -12,6 +12,8 @@ class Player
 {
 	static void Main(string[] args)
 	{
+		Agent agent = new Agent();
+		agent.Init();
 		string[] inputs;
 		int projectCount = int.Parse(Console.ReadLine());
 		for (int i = 0; i < projectCount; i++)
@@ -43,6 +45,31 @@ class Player
 				int expertiseC = int.Parse(inputs[10]);
 				int expertiseD = int.Parse(inputs[11]);
 				int expertiseE = int.Parse(inputs[12]);
+				if (i == 0)
+				{
+					// 初期化
+					if (agent.module == Module.None)
+					{
+						if (target == "DIAGNOSIS")
+						{
+							agent.module = Module.Diagnosis;
+						}
+						else if (target == "MOLECULES")
+						{
+							agent.module = Module.Molecules;
+						}
+						else if (target == "LABORATORY")
+						{
+							agent.module = Module.Laboratory;
+						}
+					}
+					agent.score = score;
+					agent.storage[0] = storageA;
+					agent.storage[1] = storageB;
+					agent.storage[2] = storageC;
+					agent.storage[3] = storageD;
+					agent.storage[4] = storageE;
+				}
 			}
 			inputs = Console.ReadLine().Split(' ');
 			int availableA = int.Parse(inputs[0]);
@@ -51,6 +78,7 @@ class Player
 			int availableD = int.Parse(inputs[3]);
 			int availableE = int.Parse(inputs[4]);
 			int sampleCount = int.Parse(Console.ReadLine()); // ゲーム中のサンプルの数
+			var sampleList = new List<Dictionary<string, object>>(); // サンプルのリスト
 			for (int i = 0; i < sampleCount; i++)
 			{
 				inputs = Console.ReadLine().Split(' ');
@@ -64,52 +92,126 @@ class Player
 				int costC = int.Parse(inputs[7]);
 				int costD = int.Parse(inputs[8]);
 				int costE = int.Parse(inputs[9]);
+				var sample = new Dictionary<string, object>();
+				sample.Add("sampleId", sampleId);
+				sample.Add("carriedBy", carriedBy);
+				sample.Add("rank", rank);
+				sample.Add("expertiseGain", expertiseGain);
+				sample.Add("health", health);
+				sample.Add("costA", costA);
+				sample.Add("costB", costB);
+				sample.Add("costC", costC);
+				sample.Add("costD", costD);
+				sample.Add("costE", costE);
+				sampleList.Add(sample);
 			}
 
 			// Write an action using Console.WriteLine()
 			// To debug: Console.Error.WriteLine("Debug messages...");
 
-			// 行動として可能なのは以下
-			// GOTO <module> : <module>に移動する
-			// CONNECT <id/type> : <id/type>のサンプルをつなげる
-			Console.WriteLine("GOTO DIAGNOSIS");
+			// 行動決定
+			agent.DoAction();
 		}
 	}
+}
+
+public enum State
+{
+	GetSample,
+	GetMolecule,
+	GetMedicine,
 }
 
 public enum Module
 {
+	None,
 	Diagnosis,
 	Molecules,
-	Laboratory
+	Laboratory,
 }
 
-public class GameState
+public class Agent
 {
-	public Module module;
+	public State state = State.GetSample;
+	public Module module = Module.None;
+	public int score = 0;
 	public int currentSampleId = -1;
+	public int[] storage = new int[5];
+	public List<Dictionary<string, object>> sampleList = new List<Dictionary<string, object>>();
+
+	public void Init()
+	{
+		state = State.GetSample;
+		module = Module.None;
+	}
+
+	public void GetSampleList(List<Dictionary<string, object>> sampleList)
+	{
+		this.sampleList = sampleList;
+	}
 
 	public void DoAction()
 	{
-		// サンプルを持っていない場合は取得しに行く
-		if (currentSampleId == -1)
+		switch (state)
 		{
-			if (module != Module.Diagnosis)
-			{
-				Console.WriteLine("GOTO Diagnosis");
-				module = Module.Diagnosis;
-				return;
-			}
-			else
-			{
-				Console.WriteLine("CONNECT 1");
-				currentSampleId = 1;
-				return;
-			}
+			case State.GetSample:
+				GetSample();
+				break;
+			case State.GetMolecule:
+				GetMolecule();
+				break;
+			case State.GetMedicine:
+				GetMedicine();
+				break;
+		}
+	}
+
+	private void GetSample()
+	{
+		if (module != Module.Diagnosis)
+		{
+			Console.WriteLine("GOTO DIAGNOSIS");
+			module = Module.Diagnosis;
+			return;
 		}
 		else
 		{
-			// サンプルを持っている場合は分子を取りに行く
+			Console.WriteLine("CONNECT 1");
+			currentSampleId = 1;
+			state = State.GetMolecule;
+			return;
 		}
 	}
+
+	private void GetMolecule()
+	{
+		if (module != Module.Molecules)
+		{
+			Console.WriteLine("GOTO MOLECULES");
+			module = Module.Molecules;
+			return;
+		}
+		else
+		{
+			Console.WriteLine("CONNECT A");
+			return;
+		}
+	}
+
+	private void GetMedicine()
+	{
+		if (module != Module.Laboratory)
+		{
+			Console.WriteLine("GOTO LABORATORY");
+			module = Module.Laboratory;
+			return;
+		}
+		else
+		{
+			Console.WriteLine("CONNECT 1");
+			return;
+		}
+	}
+
+
 }
