@@ -188,7 +188,7 @@ public class Agent
 	// 単純な分子選択
 	public void BasicMolculeSelection()
 	{
-		var sample = sampleList[currentSampleId];
+		var sample = sampleList[0];
 		var needA = (int)sample["costA"] - storage["A"] - expertise["A"];
 		var needB = (int)sample["costB"] - storage["B"] - expertise["B"];
 		var needC = (int)sample["costC"] - storage["C"] - expertise["C"];
@@ -224,7 +224,7 @@ public class Agent
 	// 薬を作れるかどうかを判定する
 	public bool CanGetMedicine()
 	{
-		var sample = sampleList[currentSampleId];
+		var sample = sampleList[0];
 		var needA = (int)sample["costA"] - storage["A"] - expertise["A"];
 		var needB = (int)sample["costB"] - storage["B"] - expertise["B"];
 		var needC = (int)sample["costC"] - storage["C"] - expertise["C"];
@@ -243,7 +243,6 @@ public class Agent
 
 	public void DoAction()
 	{
-		Console.Error.WriteLine("現在のステート: " + state);
 		switch (state)
 		{
 			case State.GetSample:
@@ -258,7 +257,7 @@ public class Agent
 		}
 	}
 
-	// サンプル取得状態
+	// サンプル取得
 	private void GetSample()
 	{
 		if (module != Module.Diagnosis)
@@ -291,6 +290,7 @@ public class Agent
 			{
 				Console.WriteLine("GOTO LABORATORY");
 				state = State.GetMedicine;
+				module = Module.Laboratory;
 			}
 			else
 			{
@@ -333,6 +333,18 @@ public class Agent
 		str += "module: " + module + "\n";
 		str += "score: " + score + "\n";
 		str += "currentSampleId: " + currentSampleId + "\n";
+		// 必要な分子の数
+		str += "cost: ";
+		if (currentSampleId != -1)
+		{
+			var sample = sampleList[0];
+			str += "A: " + sample["costA"] + ", ";
+			str += "B: " + sample["costB"] + ", ";
+			str += "C: " + sample["costC"] + ", ";
+			str += "D: " + sample["costD"] + ", ";
+			str += "E: " + sample["costE"] + ", ";
+		}
+		str += "\n";
 		// 各分子の数
 		str += "storage: ";
 		foreach (var key in storage.Keys)
