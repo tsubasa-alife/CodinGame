@@ -177,7 +177,7 @@ public class Agent
 			var health = (int)sample["health"];
 			if (health > bestSampleHealth)
 			{
-				bestSampleIndex = i;
+				bestSampleIndex = (int)sample["sampleId"];
 				bestSampleHealth = health;
 			}
 		}
