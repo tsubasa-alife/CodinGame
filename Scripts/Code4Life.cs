@@ -69,6 +69,11 @@ class Player
 					agent.storage[2] = storageC;
 					agent.storage[3] = storageD;
 					agent.storage[4] = storageE;
+					agent.expertise[0] = expertiseA;
+					agent.expertise[1] = expertiseB;
+					agent.expertise[2] = expertiseC;
+					agent.expertise[3] = expertiseD;
+					agent.expertise[4] = expertiseE;
 				}
 			}
 			inputs = Console.ReadLine().Split(' ');
@@ -105,7 +110,7 @@ class Player
 				sample.Add("costE", costE);
 				sampleList.Add(sample);
 			}
-
+			agent.GetSampleList(sampleList);
 			// Write an action using Console.WriteLine()
 			// To debug: Console.Error.WriteLine("Debug messages...");
 
@@ -134,21 +139,102 @@ public class Agent
 {
 	public State state = State.GetSample;
 	public Module module = Module.None;
+	public bool needMolecule = false;
 	public int score = 0;
 	public int currentSampleId = -1;
-	public int[] storage = new int[5];
+	public Dictionary<string, int> storage;
+	public Dictionary<string, int> expertise;
 	public List<Dictionary<string, object>> sampleList = new List<Dictionary<string, object>>();
 
+	// 初期化
 	public void Init()
 	{
 		state = State.GetSample;
 		module = Module.None;
+		needMolecule = false;
+		score = 0;
+		currentSampleId = -1;
+		storage = new Dictionary<string, int> { { "A", 0 }, { "B", 0 }, { "C", 0 }, { "D", 0 }, { "E", 0 } };
+		expertise = new Dictionary<string, int> { { "A", 0 }, { "B", 0 }, { "C", 0 }, { "D", 0 }, { "E", 0 } };
 	}
 
 	public void GetSampleList(List<Dictionary<string, object>> sampleList)
 	{
 		this.sampleList = sampleList;
 	}
+
+	public int SelectSample()
+	{
+		var bestSampleIndex = 0;
+		var bestSampleHealth = 0;
+		for (var i = 0; i < sampleList.Count; i++)
+		{
+			var sample = sampleList[i];
+			var health = (int)sample["health"];
+			if (health > bestSampleHealth)
+			{
+				bestSampleIndex = i;
+				bestSampleHealth = health;
+			}
+		}
+
+		return bestSampleIndex;
+	}
+
+	// 単純な分子選択
+	public void BasicMolculeSelection()
+	{
+		var sample = sampleList[currentSampleId];
+		var needA = (int)sample["costA"] - storage["A"] - expertise["A"];
+		var needB = (int)sample["costB"] - storage["B"] - expertise["B"];
+		var needC = (int)sample["costC"] - storage["C"] - expertise["C"];
+		var needD = (int)sample["costD"] - storage["D"] - expertise["D"];
+		var needE = (int)sample["costE"] - storage["E"] - expertise["E"];
+		if (needA > 0)
+		{
+			Console.WriteLine("CONNECT A");
+			return;
+		}
+		else if (needB > 0)
+		{
+			Console.WriteLine("CONNECT B");
+			return;
+		}
+		else if (needC > 0)
+		{
+			Console.WriteLine("CONNECT C");
+			return;
+		}
+		else if (needD > 0)
+		{
+			Console.WriteLine("CONNECT D");
+			return;
+		}
+		else if (needE > 0)
+		{
+			Console.WriteLine("CONNECT E");
+			return;
+		}
+	}
+
+	public bool CanGetMedicine()
+	{
+		var sample = sampleList[currentSampleId];
+		var needA = (int)sample["costA"] - storage["A"] - expertise["A"];
+		var needB = (int)sample["costB"] - storage["B"] - expertise["B"];
+		var needC = (int)sample["costC"] - storage["C"] - expertise["C"];
+		var needD = (int)sample["costD"] - storage["D"] - expertise["D"];
+		var needE = (int)sample["costE"] - storage["E"] - expertise["E"];
+		if (needA <= 0 && needB <= 0 && needC <= 0 && needD <= 0 && needE <= 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
 
 	public void DoAction()
 	{
@@ -166,6 +252,7 @@ public class Agent
 		}
 	}
 
+	// サンプル取得状態
 	private void GetSample()
 	{
 		if (module != Module.Diagnosis)
@@ -176,8 +263,10 @@ public class Agent
 		}
 		else
 		{
-			Console.WriteLine("CONNECT 1");
-			currentSampleId = 1;
+			var sampleIndex = SelectSample();
+			Console.WriteLine("CONNECT " + sampleIndex);
+			currentSampleId = sampleIndex;
+			needMolecule = true;
 			state = State.GetMolecule;
 			return;
 		}
@@ -193,7 +282,15 @@ public class Agent
 		}
 		else
 		{
-			Console.WriteLine("CONNECT A");
+			if (CanGetMedicine())
+			{
+				needMolecule = false;
+				state = State.GetMedicine;
+			}
+			else
+			{
+				BasicMolculeSelection();
+			}
 			return;
 		}
 	}
@@ -208,7 +305,18 @@ public class Agent
 		}
 		else
 		{
-			Console.WriteLine("CONNECT 1");
+			if (CanGetMedicine())
+			{
+				// スコアを獲得する
+				Console.WriteLine("CONNECT " + currentSampleId);
+				currentSampleId = -1;
+			}
+			else
+			{
+				Console.WriteLine("GOTO DIAGNOSIS");
+				state = State.GetSample;
+				module = Module.Diagnosis;
+			}
 			return;
 		}
 	}
