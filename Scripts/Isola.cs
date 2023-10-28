@@ -17,6 +17,9 @@ class Player
 {
 	static void Main(string[] args)
 	{
+		// ゲーム状態の初期化
+		GameState gameState = new GameState();
+		gameState.Init();
 		// プレイヤーの座標
 		int playerPositionX = int.Parse(Console.ReadLine());
 		int playerPositionY = int.Parse(Console.ReadLine());
@@ -30,12 +33,30 @@ class Player
 			// 相手が取り除いたタイルの座標
 			int opponentLastRemovedTileX = int.Parse(Console.ReadLine());
 			int opponentLastRemovedTileY = int.Parse(Console.ReadLine());
+			// 相手が先攻の場合
+			if (opponentLastRemovedTileX != -1 && opponentLastRemovedTileY != -1)
+			{
+				// 相手の手を反映して局面を進める
+				gameState.Advance(new ValueTuple<int, int, int, int>(opponentPositionX, opponentPositionY, opponentLastRemovedTileX, opponentLastRemovedTileY));
+			}
 
-			// Write an action using Console.WriteLine()
-			// To debug: Console.Error.WriteLine("Debug messages...");
-
-			Console.WriteLine("RANDOM;MESSAGE");
+			// 自分の手を決定して局面を進める
+			var move = GetRandomMove(gameState);
+			gameState.Advance(move);
+			var moveMessage = move.Item1.ToString() + " " + move.Item2.ToString() + " " + move.Item3.ToString() + " " + move.Item4.ToString();
+			Console.Error.WriteLine(moveMessage);
+			Console.WriteLine(moveMessage + ";MESSAGE");
 		}
+	}
+
+	// ランダムに手を選択
+	private static ValueTuple<int, int, int, int> GetRandomMove(GameState gameState)
+	{
+		var moves = gameState.GetLegalMoves();
+		var random = new Random();
+		var index = random.Next(moves.Count);
+		var randomMove = moves[index];
+		return randomMove;
 	}
 }
 
@@ -136,7 +157,7 @@ public class GameState
 				}
 			}
 		}
-		return new List<ValueTuple<int, int, int, int>>();
+		return legalMoves;
 	}
 
 	// 着手によって盤面を進める
@@ -164,7 +185,7 @@ public class GameState
 	public GameState Clone()
 	{
 		GameState clone = new GameState();
-		clone.agents = new Agent[2] { new Agent(this.agents[0].posX, this.agents[0].posY), new Agent(this.agents[1].posX, this.agents[1].posY) }
+		clone.agents = new Agent[2] { new Agent(this.agents[0].posX, this.agents[0].posY), new Agent(this.agents[1].posX, this.agents[1].posY) };
 		clone.board = (int[,])this.board.Clone();
 		return clone;
 	}
