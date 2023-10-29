@@ -41,72 +41,12 @@ class Player
 			}
 
 			// 自分の手を決定して局面を進める
-			var move = GetMonteCarloBestMove(gameState, 80);
+			var move = MonteCarloAI.GetMonteCarloBestMove(gameState, 100);
 
 			gameState.Advance(move);
 			var moveMessage = move.Item1.ToString() + " " + move.Item2.ToString() + " " + move.Item3.ToString() + " " + move.Item4.ToString();
 			Console.Error.WriteLine(moveMessage);
 			Console.WriteLine(moveMessage + ";MESSAGE");
-		}
-	}
-
-	// ランダムに手を選択
-	private static ValueTuple<int, int, int, int> GetRandomMove(GameState gameState)
-	{
-		var moves = gameState.GetLegalMoves();
-		var random = new Random();
-		var index = random.Next(moves.Count);
-		var randomMove = moves[index];
-		return randomMove;
-	}
-
-	// モンテカルロ木探索で手を選択
-	private static ValueTuple<int, int, int, int> GetMonteCarloBestMove(GameState gameState, int playOutNumber)
-	{
-		var legalMoves = gameState.GetLegalMoves();
-		var values = new float[legalMoves.Count];
-		var counts = new int[legalMoves.Count];
-
-		for (int i = 0; i < playOutNumber; i++)
-		{
-			var index = i % legalMoves.Count;
-			var move = legalMoves[index];
-			var newGameState = gameState.Clone();
-			newGameState.Advance(move);
-			values[index] += 1.0f - PlayOut(newGameState);
-			counts[index] += 1;
-		}
-
-		int bestMoveIndex = -1;
-		float bestScore = -100.0f;
-		for (int i = 0; i < legalMoves.Count; i++)
-		{
-			var score = values[i] / (float)counts[i];
-			if (score > bestScore)
-			{
-				bestScore = score;
-				bestMoveIndex = i;
-			}
-		}
-
-		return legalMoves[bestMoveIndex];
-	}
-
-	// プレイアウト用メソッド
-	private static float PlayOut(GameState gameState)
-	{
-		switch (gameState.GetStatus())
-		{
-			case -1:
-				// 負け
-				return 0.0f;
-			default:
-				var nextState = gameState.Clone();
-				var legalMoves = nextState.GetLegalMoves();
-				var move = GetRandomMove(nextState);
-				nextState.Advance(move);
-				// 再帰的にプレイアウト（相手ターンでの評価が負けの場合は1.0fが返る）
-				return 1.0f - PlayOut(nextState);
 		}
 	}
 }
@@ -127,6 +67,9 @@ public class Agent
 
 }
 
+/// <summary>
+/// ゲーム盤面状態
+/// </summary>
 public class GameState
 {
 	private Agent[] agents = new Agent[2];
@@ -153,7 +96,7 @@ public class GameState
 	}
 
 	// 合法手の取得
-	public List<ValueTuple<int, int, int, int>> GetLegalMoves()
+	public List<ValueTuple<int, int, int, int>> GetLegalMoves(int limRemoveX = -1, int limRemoveY = -1)
 	{
 		var legalMoves = new List<ValueTuple<int, int, int, int>>();
 		var agent = agents[0];
@@ -187,6 +130,11 @@ public class GameState
 				{
 					removeX = x;
 					removeY = y;
+					// 相手の駒の四方2マス以内かチェック
+					if (Math.Abs(x - agents[1].posX) > 2 || Math.Abs(y - agents[1].posY) > 2)
+					{
+						continue;
+					}
 					// 存在しているマスかチェック
 					if (board[x, y] != 1)
 					{
@@ -244,6 +192,11 @@ public class GameState
 		return -1;
 	}
 
+	public bool isDone()
+	{
+		return GetStatus() != 0;
+	}
+
 	// ディープコピー用メソッド
 	public GameState Clone()
 	{
@@ -251,5 +204,175 @@ public class GameState
 		clone.agents = new Agent[2] { new Agent(this.agents[0].posX, this.agents[0].posY), new Agent(this.agents[1].posX, this.agents[1].posY) };
 		clone.board = (int[,])this.board.Clone();
 		return clone;
+	}
+}
+
+/// <summary>
+/// モンテカルロ木探索AI
+/// </summary>
+public class MonteCarloAI
+{
+	// ランダムに手を選択
+	public static ValueTuple<int, int, int, int> GetRandomMove(GameState gameState)
+	{
+		var moves = gameState.GetLegalMoves();
+		var random = new Random();
+		var index = random.Next(moves.Count);
+		var randomMove = moves[index];
+		return randomMove;
+	}
+	// モンテカルロ木探索で手を選択
+	public static ValueTuple<int, int, int, int> GetMonteCarloBestMove(GameState gameState, int playOutNumber)
+	{
+		Node rootNode = new Node(gameState);
+		rootNode.Expand();
+		for (int i = 0; i < playOutNumber; i++)
+		{
+			rootNode.Evaluate();
+		}
+		var legalMoves = gameState.GetLegalMoves();
+		var bestMoveSearchCount = -1;
+		var bestMoveIndex = -1;
+
+		for (int i = 0; i < legalMoves.Count; i++)
+		{
+			int searchCount = rootNode.children[i].visitCount;
+			if (searchCount > bestMoveSearchCount)
+			{
+				bestMoveSearchCount = searchCount;
+				bestMoveIndex = i;
+			}
+		}
+
+		return legalMoves[bestMoveIndex];
+	}
+
+	// プレイアウト用メソッド
+	public static float PlayOut(GameState gameState)
+	{
+		switch (gameState.GetStatus())
+		{
+			case -1:
+				// 負け
+				return 0.0f;
+			default:
+				var nextState = gameState.Clone();
+				var legalMoves = nextState.GetLegalMoves();
+				var move = GetRandomMove(nextState);
+				nextState.Advance(move);
+				// 再帰的にプレイアウト（相手ターンでの評価が負けの場合は1.0fが返る）
+				return 1.0f - PlayOut(nextState);
+		}
+	}
+}
+
+public class Node
+{
+	private GameState gameState;
+	private float w; // 累積価値
+	public List<Node> children = new List<Node>();
+	public int visitCount = 0;
+	private int expandThreshold = 10;
+
+	public Node(GameState gameState)
+	{
+		this.gameState = gameState;
+		this.w = 0.0f;
+		this.visitCount = 0;
+	}
+
+	public float Evaluate()
+	{
+		// ゲームが終了している場合
+		if (this.gameState.isDone())
+		{
+			float value = 0.5f;
+			switch (this.gameState.GetStatus())
+			{
+				case -1:
+					value = 0.0f;
+					break;
+				default:
+					value = 1.0f;
+					break;
+			}
+
+			this.w += value;
+			this.visitCount += 1;
+			return value;
+		}
+
+		// 子ノードがない場合
+		if (this.children.Count == 0)
+		{
+			// 合法手を取得
+			var newGameState = this.gameState.Clone();
+			float value = MonteCarloAI.PlayOut(newGameState);
+			this.w += value;
+			this.visitCount += 1;
+
+			// 一定回数以上の訪問回数の場合は子ノードを展開
+			if (this.visitCount > this.expandThreshold)
+			{
+				this.Expand();
+			}
+
+			return value;
+		}
+		else
+		{
+			// 子ノードがある場合
+			float value = 1.0f - this.Select().Evaluate();
+			this.w += value;
+			this.visitCount += 1;
+			return value;
+		}
+
+	}
+
+	public void Expand()
+	{
+		var legalMoves = this.gameState.GetLegalMoves();
+		this.children = new List<Node>();
+		foreach (var move in legalMoves)
+		{
+			var newGameState = this.gameState.Clone();
+			newGameState.Advance(move);
+			this.children.Add(new Node(newGameState));
+		}
+	}
+
+	public Node Select()
+	{
+		foreach (var child in this.children)
+		{
+			if (child.visitCount == 0)
+			{
+				return child;
+			}
+		}
+
+		float t = 0.0f;
+
+		foreach (var child in this.children)
+		{
+			t += child.visitCount;
+		}
+
+		float bestScore = -1000.0f;
+		int bestIndex = -1;
+		for (int i = 0; i < this.children.Count; i++)
+		{
+			var child = this.children[i];
+			var ucb = 1.0f - child.w / child.visitCount + 2.0f * (float)Math.Sqrt(Math.Log(t) / child.visitCount);
+			if (ucb > bestScore)
+			{
+				bestScore = ucb;
+				bestIndex = i;
+			}
+		}
+
+		return this.children[bestIndex];
+
 	}
 }
