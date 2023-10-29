@@ -41,7 +41,8 @@ class Player
 			}
 
 			// 自分の手を決定して局面を進める
-			var move = GetRandomMove(gameState);
+			var move = GetMonteCarloBestMove(gameState, 80);
+
 			gameState.Advance(move);
 			var moveMessage = move.Item1.ToString() + " " + move.Item2.ToString() + " " + move.Item3.ToString() + " " + move.Item4.ToString();
 			Console.Error.WriteLine(moveMessage);
@@ -57,6 +58,56 @@ class Player
 		var index = random.Next(moves.Count);
 		var randomMove = moves[index];
 		return randomMove;
+	}
+
+	// モンテカルロ木探索で手を選択
+	private static ValueTuple<int, int, int, int> GetMonteCarloBestMove(GameState gameState, int playOutNumber)
+	{
+		var legalMoves = gameState.GetLegalMoves();
+		var values = new float[legalMoves.Count];
+		var counts = new int[legalMoves.Count];
+
+		for (int i = 0; i < playOutNumber; i++)
+		{
+			var index = i % legalMoves.Count;
+			var move = legalMoves[index];
+			var newGameState = gameState.Clone();
+			newGameState.Advance(move);
+			values[index] += 1.0f - PlayOut(newGameState);
+			counts[index] += 1;
+		}
+
+		int bestMoveIndex = -1;
+		float bestScore = -100.0f;
+		for (int i = 0; i < legalMoves.Count; i++)
+		{
+			var score = values[i] / (float)counts[i];
+			if (score > bestScore)
+			{
+				bestScore = score;
+				bestMoveIndex = i;
+			}
+		}
+
+		return legalMoves[bestMoveIndex];
+	}
+
+	// プレイアウト用メソッド
+	private static float PlayOut(GameState gameState)
+	{
+		switch (gameState.GetStatus())
+		{
+			case -1:
+				// 負け
+				return 0.0f;
+			default:
+				var nextState = gameState.Clone();
+				var legalMoves = nextState.GetLegalMoves();
+				var move = GetRandomMove(nextState);
+				nextState.Advance(move);
+				// 再帰的にプレイアウト（相手ターンでの評価が負けの場合は1.0fが返る）
+				return 1.0f - PlayOut(nextState);
+		}
 	}
 }
 
@@ -179,6 +230,18 @@ public class GameState
 		Agent tmp = agents[0];
 		agents[0] = agents[1];
 		agents[1] = tmp;
+	}
+
+	public int GetStatus()
+	{
+		// 合法手があるかチェック
+		if (GetLegalMoves().Count > 0)
+		{
+			// 合法手がある場合はゲーム続行
+			return 0;
+		}
+		// 合法手がない場合は負け
+		return -1;
 	}
 
 	// ディープコピー用メソッド
