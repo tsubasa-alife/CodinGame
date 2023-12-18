@@ -40,10 +40,12 @@ class Player
 				gameState.Advance(new ValueTuple<int, int, int, int>(opponentPositionX, opponentPositionY, opponentLastRemovedTileX, opponentLastRemovedTileY));
 			}
 
-			// 自分の手を決定して局面を進める
+			// 自分の手を決定する
 			var move = MonteCarloAI.GetMonteCarloBestMove(gameState, 100);
 
+			// 自分の手を反映して局面を進める
 			gameState.Advance(move);
+			// 自分の手を送信する
 			var moveMessage = move.Item1.ToString() + " " + move.Item2.ToString() + " " + move.Item3.ToString() + " " + move.Item4.ToString();
 			Console.Error.WriteLine(moveMessage);
 			Console.WriteLine(moveMessage + ";MESSAGE");
@@ -172,6 +174,7 @@ public class GameState
 		ChangePerspective();
 	}
 
+	// 視点の入れ替え用メソッド
 	public void ChangePerspective()
 	{
 		// 視点を入れ替える（Agentsをスワップする）
@@ -180,6 +183,7 @@ public class GameState
 		agents[1] = tmp;
 	}
 
+	// ゲームの状態を取得
 	public int GetStatus()
 	{
 		// 合法手があるかチェック
@@ -192,6 +196,7 @@ public class GameState
 		return -1;
 	}
 
+	// ゲームが終了しているかチェック
 	public bool isDone()
 	{
 		return GetStatus() != 0;
@@ -266,6 +271,9 @@ public class MonteCarloAI
 	}
 }
 
+/// <summary>
+/// 探索時のノードを表すクラス
+/// </summary>
 public class Node
 {
 	private GameState gameState;
@@ -281,6 +289,7 @@ public class Node
 		this.visitCount = 0;
 	}
 
+	// ノードの評価
 	public float Evaluate()
 	{
 		// ゲームが終了している場合
@@ -330,6 +339,7 @@ public class Node
 
 	}
 
+	// 子ノードの展開
 	public void Expand()
 	{
 		var legalMoves = this.gameState.GetLegalMoves();
@@ -342,6 +352,7 @@ public class Node
 		}
 	}
 
+	// 子ノードの選択
 	public Node Select()
 	{
 		foreach (var child in this.children)
