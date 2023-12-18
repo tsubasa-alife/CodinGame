@@ -132,11 +132,6 @@ public class GameState
 				{
 					removeX = x;
 					removeY = y;
-					// 相手の駒の四方2マス以内かチェック
-					if (Math.Abs(x - agents[1].posX) > 2 || Math.Abs(y - agents[1].posY) > 2)
-					{
-						continue;
-					}
 					// 存在しているマスかチェック
 					if (board[x, y] != 1)
 					{
