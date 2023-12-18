@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Linq;
 using System.IO;
 using System.Text;
@@ -224,16 +225,24 @@ public class MonteCarloAI
 	// モンテカルロ木探索で手を選択
 	public static ValueTuple<int, int, int, int> GetMonteCarloBestMove(GameState gameState, int playOutNumber)
 	{
+		// 探索開始時刻保存
+		DateTime startTime = DateTime.Now;
 		Node rootNode = new Node(gameState);
 		rootNode.Expand();
 		for (int i = 0; i < playOutNumber; i++)
 		{
+			// 探索時間が90msを超えたら終了
+			if ((DateTime.Now - startTime).TotalMilliseconds > 90)
+			{
+				break;
+			}
 			rootNode.Evaluate();
 		}
 		var legalMoves = gameState.GetLegalMoves();
 		var bestMoveSearchCount = -1;
 		var bestMoveIndex = -1;
 
+		// 最も訪問回数が多い手を最善手として選択する
 		for (int i = 0; i < legalMoves.Count; i++)
 		{
 			int searchCount = rootNode.children[i].visitCount;
