@@ -140,7 +140,7 @@ public class TronGame
 	}
 
 	// 指定した場所から移動可能な空きマスの数を深さ優先探索で取得する
-	// FloodFillを使うが、再帰で実装するとスタックオーバーフローするので、スタックを使う
+	// FloodFillを使うが、再帰で実装するとスタックオーバーフローする可能性があるので、スタックを使う
 	public int GetEmptyCount(int x, int y)
 	{
 		var boardClone = (int[,])board.Clone();
