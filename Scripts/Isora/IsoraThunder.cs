@@ -7,12 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// 【Isolaのルール】
-/// 駒を動かして、どこかのマスを取り除く。
-/// どちらかの駒が動けなくなったら負け。
-/// 【駒の動き】
-/// 斜めにも動ける。
-/// パスはできない。
+/// ThunderサーチAIによるIsolaのプレイ
 /// </summary>
 class Player
 {
@@ -21,6 +16,7 @@ class Player
 		// ゲーム状態の初期化
 		GameState gameState = new GameState();
 		gameState.Init();
+		int turn = 0;
 		// プレイヤーの座標
 		int playerPositionX = int.Parse(Console.ReadLine());
 		int playerPositionY = int.Parse(Console.ReadLine());
@@ -39,13 +35,44 @@ class Player
 			{
 				// 相手の手を反映して局面を進める
 				gameState.Advance(new ValueTuple<int, int, int, int>(opponentPositionX, opponentPositionY, opponentLastRemovedTileX, opponentLastRemovedTileY));
+				turn++;
 			}
 
+			ValueTuple<int, int, int, int> move = new ValueTuple<int, int, int, int>(0, 0, 0, 0);
 			// 自分の手を決定する
-			var move = MonteCarloAI.GetMonteCarloBestMove(gameState, 100);
+			// 10ターン目までは右か右上、右下に進む手を選択
+			if (turn < 10)
+			{
+				//合法手のうち、右か右上、右下に進む手を選択
+				var legalMoves = gameState.GetLegalMoves();
+				var playerPosition = gameState.GetPlayerPosition(0);
+				foreach (var legalMove in legalMoves)
+				{
+					if (legalMove.Item1 == playerPosition.Item1 + 1 && legalMove.Item2 == playerPosition.Item2)
+					{
+						move = legalMove;
+						break;
+					}
+					if (legalMove.Item1 == playerPosition.Item1 + 1 && legalMove.Item2 == playerPosition.Item2 + 1)
+					{
+						move = legalMove;
+						break;
+					}
+					if (legalMove.Item1 == playerPosition.Item1 + 1 && legalMove.Item2 == playerPosition.Item2 - 1)
+					{
+						move = legalMove;
+						break;
+					}
+				}
+			}
+			else
+			{
+				move = ThunderSearchAI.GetThunderSearchBestMove(gameState, 300);
+			}
 
 			// 自分の手を反映して局面を進める
 			gameState.Advance(move);
+			turn++;
 			// 自分の手を送信する
 			var moveMessage = move.Item1.ToString() + " " + move.Item2.ToString() + " " + move.Item3.ToString() + " " + move.Item4.ToString();
 			Console.Error.WriteLine(moveMessage);
@@ -198,6 +225,76 @@ public class GameState
 		return GetStatus() != 0;
 	}
 
+	// 指定されたプレイヤーの現在位置を取得
+	public ValueTuple<int, int> GetPlayerPosition(int playerIndex)
+	{
+		return new ValueTuple<int, int>(agents[playerIndex].posX, agents[playerIndex].posY);
+	}
+
+	// 現在のプレイヤーから見た予想勝率を取得
+	public float GetScoreRate()
+	{
+		// 自分の移動可能マスの数
+		int myMoveCount = 0;
+		var agent = agents[0];
+		for (int i = 0; i < 8; i++)
+		{
+			int nextX = agent.posX + dir[i, 0];
+			int nextY = agent.posY + dir[i, 1];
+			// 盤面内チェック
+			if (nextX < 0 || nextX >= 8 || nextY < 0 || nextY >= 8)
+			{
+				continue;
+			}
+			// 存在しているマスかチェック
+			if (board[nextX, nextY] != 1)
+			{
+				continue;
+			}
+			// 相手がいるかチェック
+			if (nextX == agents[1].posX && nextY == agents[1].posY)
+			{
+				continue;
+			}
+			myMoveCount++;
+		}
+
+		// 相手の移動可能マスの数
+		int opponentMoveCount = 0;
+		agent = agents[1];
+		for (int i = 0; i < 8; i++)
+		{
+			int nextX = agent.posX + dir[i, 0];
+			int nextY = agent.posY + dir[i, 1];
+			// 盤面内チェック
+			if (nextX < 0 || nextX >= 8 || nextY < 0 || nextY >= 8)
+			{
+				continue;
+			}
+			// 存在しているマスかチェック
+			if (board[nextX, nextY] != 1)
+			{
+				continue;
+			}
+			// 相手がいるかチェック
+			if (nextX == agents[0].posX && nextY == agents[0].posY)
+			{
+				continue;
+			}
+			opponentMoveCount++;
+		}
+
+		// 勝率 = 自分の移動可能マスの数/（自分の移動可能マスの数+相手の移動可能マスの数）
+		if (opponentMoveCount == 0)
+		{
+			return 1.0f;
+		}
+
+		var rate = (float)myMoveCount / (myMoveCount + opponentMoveCount);
+
+		return rate;
+	}
+
 	// ディープコピー用メソッド
 	public GameState Clone()
 	{
@@ -209,36 +306,33 @@ public class GameState
 }
 
 /// <summary>
-/// モンテカルロ木探索AI
+/// ThunderサーチAI
 /// </summary>
-public class MonteCarloAI
+public class ThunderSearchAI
 {
-	// ランダムに手を選択
-	public static ValueTuple<int, int, int, int> GetRandomMove(GameState gameState)
+	// Thunderサーチで手を選択
+	public static ValueTuple<int, int, int, int> GetThunderSearchBestMove(GameState gameState, int playOutNumber)
 	{
-		var moves = gameState.GetLegalMoves();
-		var random = new Random();
-		var index = random.Next(moves.Count);
-		var randomMove = moves[index];
-		return randomMove;
-	}
-	// モンテカルロ木探索で手を選択
-	public static ValueTuple<int, int, int, int> GetMonteCarloBestMove(GameState gameState, int playOutNumber)
-	{
-		// 探索開始時刻保存
+		// 探索開始時刻
 		DateTime startTime = DateTime.Now;
 		Node rootNode = new Node(gameState);
 		rootNode.Expand();
 		for (int i = 0; i < playOutNumber; i++)
 		{
+			// 経過時間
+			var elapsedTime = DateTime.Now - startTime;
 			// 探索時間が90msを超えたら終了
-			if ((DateTime.Now - startTime).TotalMilliseconds > 90)
+			if (elapsedTime.TotalMilliseconds > 80)
 			{
+				Console.Error.WriteLine("TimeOut");
 				break;
 			}
-			rootNode.Evaluate();
+			rootNode.Evaluate(startTime);
 		}
+
+		// 探索後の最善手を取得
 		var legalMoves = gameState.GetLegalMoves();
+		Console.Error.WriteLine("合法手数: " + legalMoves.Count);
 		var bestMoveSearchCount = -1;
 		var bestMoveIndex = -1;
 
@@ -256,23 +350,6 @@ public class MonteCarloAI
 		return legalMoves[bestMoveIndex];
 	}
 
-	// プレイアウト用メソッド
-	public static float PlayOut(GameState gameState)
-	{
-		switch (gameState.GetStatus())
-		{
-			case -1:
-				// 負け
-				return 0.0f;
-			default:
-				var nextState = gameState.Clone();
-				var legalMoves = nextState.GetLegalMoves();
-				var move = GetRandomMove(nextState);
-				nextState.Advance(move);
-				// 再帰的にプレイアウト（相手ターンでの評価が負けの場合は1.0fが返る）
-				return 1.0f - PlayOut(nextState);
-		}
-	}
 }
 
 /// <summary>
@@ -281,10 +358,9 @@ public class MonteCarloAI
 public class Node
 {
 	private GameState gameState;
-	private float w; // 累積価値
+	public float w; // 累積価値
 	public List<Node> children = new List<Node>();
-	public int visitCount = 0;
-	private int expandThreshold = 10;
+	public int visitCount = 0; // 訪問回数
 
 	public Node(GameState gameState)
 	{
@@ -294,10 +370,10 @@ public class Node
 	}
 
 	// ノードの評価
-	public float Evaluate()
+	public float Evaluate(DateTime startTime)
 	{
-		// ゲームが終了している場合
-		if (this.gameState.isDone())
+		// ゲームが終了している or 探索の時間制限が来ている場合
+		if (this.gameState.isDone() || (DateTime.Now - startTime).TotalMilliseconds > 80)
 		{
 			float value = 0.5f;
 			switch (this.gameState.GetStatus())
@@ -320,22 +396,19 @@ public class Node
 		{
 			// 合法手を取得
 			var newGameState = this.gameState.Clone();
-			float value = MonteCarloAI.PlayOut(newGameState);
+			float value = newGameState.GetScoreRate();
 			this.w += value;
 			this.visitCount += 1;
 
-			// 一定回数以上の訪問回数の場合は子ノードを展開
-			if (this.visitCount > this.expandThreshold)
-			{
-				this.Expand();
-			}
+			// 必ず子ノードを展開
+			this.Expand();
 
 			return value;
 		}
 		else
 		{
 			// 子ノードがある場合
-			float value = 1.0f - this.Select().Evaluate();
+			float value = 1.0f - this.Select().Evaluate(startTime);
 			this.w += value;
 			this.visitCount += 1;
 			return value;
@@ -379,10 +452,10 @@ public class Node
 		for (int i = 0; i < this.children.Count; i++)
 		{
 			var child = this.children[i];
-			var ucb = 1.0f - child.w / child.visitCount + 2.0f * (float)Math.Sqrt(Math.Log(t) / child.visitCount);
-			if (ucb > bestScore)
+			var winRate = 1.0f - child.w / child.visitCount;
+			if (winRate > bestScore)
 			{
-				bestScore = ucb;
+				bestScore = winRate;
 				bestIndex = i;
 			}
 		}
