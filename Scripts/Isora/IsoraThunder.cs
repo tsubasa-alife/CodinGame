@@ -40,35 +40,19 @@ class Player
 
 			ValueTuple<int, int, int, int> move = new ValueTuple<int, int, int, int>(0, 0, 0, 0);
 			// 自分の手を決定する
-			// 10ターン目までは右か右上、右下に進む手を選択
-			if (turn < 10)
+			// 10ターン目まではルールベースAIで選択
+			if (turn < 20)
 			{
-				//合法手のうち、右か右上、右下に進む手を選択
-				var legalMoves = gameState.GetLegalMoves();
-				var playerPosition = gameState.GetPlayerPosition(0);
-				foreach (var legalMove in legalMoves)
-				{
-					if (legalMove.Item1 == playerPosition.Item1 + 1 && legalMove.Item2 == playerPosition.Item2)
-					{
-						move = legalMove;
-						break;
-					}
-					if (legalMove.Item1 == playerPosition.Item1 + 1 && legalMove.Item2 == playerPosition.Item2 + 1)
-					{
-						move = legalMove;
-						break;
-					}
-					if (legalMove.Item1 == playerPosition.Item1 + 1 && legalMove.Item2 == playerPosition.Item2 - 1)
-					{
-						move = legalMove;
-						break;
-					}
-				}
+				move = RuleBaseAI.GetRuleBaseBestMove(gameState);
 			}
 			else
 			{
+				// 10ターン目以降はThunderサーチAIで選択
 				move = ThunderSearchAI.GetThunderSearchBestMove(gameState, 300);
 			}
+
+			// 現在の局面を出力
+			Console.Error.WriteLine(gameState.ToString());
 
 			// 自分の手を反映して局面を進める
 			gameState.Advance(move);
@@ -103,7 +87,7 @@ public class Agent
 public class GameState
 {
 	private Agent[] agents = new Agent[2];
-	private int[,] board = new int[8, 8];
+	public int[,] board = new int[9, 9];
 	// 8方向の移動（左上から反時計回り）
 	public static int[,] dir = new int[8, 2] { { -1, -1 }, { -1, 0 }, { -1, 1 }, { 0, -1 }, { 0, 1 }, { 1, -1 }, { 1, 0 }, { 1, 1 } };
 
@@ -115,9 +99,9 @@ public class GameState
 		agents[1] = new Agent(7, 4);
 
 		// 盤面の初期化
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 9; i++)
 		{
-			for (int j = 0; j < 8; j++)
+			for (int j = 0; j < 9; j++)
 			{
 				// 1はマスがあることを示す
 				board[i, j] = 1;
@@ -136,7 +120,7 @@ public class GameState
 			int nextX = agent.posX + dir[i, 0];
 			int nextY = agent.posY + dir[i, 1];
 			// 盤面内チェック
-			if (nextX < 0 || nextX >= 8 || nextY < 0 || nextY >= 8)
+			if (nextX < 0 || nextX > 8 || nextY < 0 || nextY > 8)
 			{
 				continue;
 			}
@@ -154,9 +138,9 @@ public class GameState
 			// 取り除くマスの座標を追加
 			int removeX = 0;
 			int removeY = 0;
-			for (int y = 0; y < 8; y++)
+			for (int y = 0; y < 9; y++)
 			{
-				for (int x = 0; x < 8; x++)
+				for (int x = 0; x < 9; x++)
 				{
 					removeX = x;
 					removeY = y;
@@ -242,7 +226,7 @@ public class GameState
 			int nextX = agent.posX + dir[i, 0];
 			int nextY = agent.posY + dir[i, 1];
 			// 盤面内チェック
-			if (nextX < 0 || nextX >= 8 || nextY < 0 || nextY >= 8)
+			if (nextX < 0 || nextX > 8 || nextY < 0 || nextY > 8)
 			{
 				continue;
 			}
@@ -267,7 +251,7 @@ public class GameState
 			int nextX = agent.posX + dir[i, 0];
 			int nextY = agent.posY + dir[i, 1];
 			// 盤面内チェック
-			if (nextX < 0 || nextX >= 8 || nextY < 0 || nextY >= 8)
+			if (nextX < 0 || nextX > 8 || nextY < 0 || nextY > 8)
 			{
 				continue;
 			}
@@ -302,6 +286,58 @@ public class GameState
 		clone.agents = new Agent[2] { new Agent(this.agents[0].posX, this.agents[0].posY), new Agent(this.agents[1].posX, this.agents[1].posY) };
 		clone.board = (int[,])this.board.Clone();
 		return clone;
+	}
+
+	public string ToString()
+	{
+		var sb = new StringBuilder();
+		for (int y = 0; y < 9; y++)
+		{
+			for (int x = 0; x < 9; x++)
+			{
+				if (x == agents[0].posX && y == agents[0].posY)
+				{
+					sb.Append("A");
+				}
+				else if (x == agents[1].posX && y == agents[1].posY)
+				{
+					sb.Append("B");
+				}
+				else
+				{
+					sb.Append(board[x, y]);
+				}
+			}
+			sb.Append("\n");
+		}
+		return sb.ToString();
+	}
+}
+
+/// <summary>
+/// ルールベースAI
+/// </summary>
+public class RuleBaseAI
+{
+	// ルールベースで手を選択
+	public static ValueTuple<int, int, int, int> GetRuleBaseBestMove(GameState gameState)
+	{
+		// 合法手の中から相手に近づく手を選択
+		var legalMoves = gameState.GetLegalMoves();
+		var bestMoveIndex = -1;
+		var bestMoveDistance = 1000;
+		for (int i = 0; i < legalMoves.Count; i++)
+		{
+			var move = legalMoves[i];
+			var distance = Math.Abs(move.Item1 - gameState.GetPlayerPosition(1).Item1) + Math.Abs(move.Item2 - gameState.GetPlayerPosition(1).Item2);
+			if (distance < bestMoveDistance)
+			{
+				bestMoveDistance = distance;
+				bestMoveIndex = i;
+			}
+		}
+
+		return legalMoves[bestMoveIndex];
 	}
 }
 

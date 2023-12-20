@@ -76,7 +76,7 @@ public class Agent
 public class GameState
 {
 	private Agent[] agents = new Agent[2];
-	private int[,] board = new int[8, 8];
+	private int[,] board = new int[9, 9];
 	// 8方向の移動（左上から反時計回り）
 	public static int[,] dir = new int[8, 2] { { -1, -1 }, { -1, 0 }, { -1, 1 }, { 0, -1 }, { 0, 1 }, { 1, -1 }, { 1, 0 }, { 1, 1 } };
 
@@ -88,9 +88,9 @@ public class GameState
 		agents[1] = new Agent(7, 4);
 
 		// 盤面の初期化
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 9; i++)
 		{
-			for (int j = 0; j < 8; j++)
+			for (int j = 0; j < 9; j++)
 			{
 				// 1はマスがあることを示す
 				board[i, j] = 1;
@@ -127,9 +127,9 @@ public class GameState
 			// 取り除くマスの座標を追加
 			int removeX = 0;
 			int removeY = 0;
-			for (int y = 0; y < 8; y++)
+			for (int y = 0; y < 9; y++)
 			{
-				for (int x = 0; x < 8; x++)
+				for (int x = 0; x < 9; x++)
 				{
 					removeX = x;
 					removeY = y;
