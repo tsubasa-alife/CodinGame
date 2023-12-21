@@ -40,14 +40,14 @@ class Player
 
 			ValueTuple<int, int, int, int> move = new ValueTuple<int, int, int, int>(0, 0, 0, 0);
 			// 自分の手を決定する
-			// 10ターン目まではルールベースAIで選択
-			if (turn < 20)
+			// 7ターン目まではルールベースAIで選択
+			if (turn < 15)
 			{
 				move = RuleBaseAI.GetRuleBaseBestMove(gameState);
 			}
 			else
 			{
-				// 10ターン目以降はThunderサーチAIで選択
+				// 7ターン目以降はThunderサーチAIで選択
 				move = ThunderSearchAI.GetThunderSearchBestMove(gameState, 300);
 			}
 
@@ -368,6 +368,7 @@ public class ThunderSearchAI
 	{
 		// 探索開始時刻
 		DateTime startTime = DateTime.Now;
+		bool isTimeOut = false;
 		Node rootNode = new Node(gameState);
 		rootNode.Expand();
 		for (int i = 0; i < playOutNumber; i++)
@@ -375,12 +376,19 @@ public class ThunderSearchAI
 			// 経過時間
 			var elapsedTime = DateTime.Now - startTime;
 			// 探索時間が90msを超えたら終了
-			if (elapsedTime.TotalMilliseconds > 80)
+			if (elapsedTime.TotalMilliseconds > 90)
 			{
 				Console.Error.WriteLine("TimeOut");
+				isTimeOut = true;
 				break;
 			}
 			rootNode.Evaluate(startTime);
+		}
+
+		if (isTimeOut)
+		{
+			// 探索時間が90msを超えた場合は最善手をルールベースAIで選択
+			return RuleBaseAI.GetRuleBaseBestMove(gameState);
 		}
 
 		// 探索後の最善手を取得
@@ -426,7 +434,7 @@ public class Node
 	public float Evaluate(DateTime startTime)
 	{
 		// ゲームが終了している or 探索の時間制限が来ている場合
-		if (this.gameState.isDone() || (DateTime.Now - startTime).TotalMilliseconds > 80)
+		if (this.gameState.isDone() || (DateTime.Now - startTime).TotalMilliseconds > 90)
 		{
 			float value = 0.5f;
 			switch (this.gameState.GetStatus())
