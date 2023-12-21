@@ -85,7 +85,7 @@ public class GameState
 	{
 		// プレイヤー位置の初期化
 		agents[0] = new Agent(0, 4);
-		agents[1] = new Agent(7, 4);
+		agents[1] = new Agent(8, 4);
 
 		// 盤面の初期化
 		for (int i = 0; i < 9; i++)

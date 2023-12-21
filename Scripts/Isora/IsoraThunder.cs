@@ -96,7 +96,7 @@ public class GameState
 	{
 		// プレイヤー位置の初期化
 		agents[0] = new Agent(0, 4);
-		agents[1] = new Agent(7, 4);
+		agents[1] = new Agent(8, 4);
 
 		// 盤面の初期化
 		for (int i = 0; i < 9; i++)
@@ -144,6 +144,11 @@ public class GameState
 				{
 					removeX = x;
 					removeY = y;
+					// 相手の周囲2マス以内かチェック
+					if (Math.Abs(removeX - agents[1].posX) > 2 || Math.Abs(removeY - agents[1].posY) > 2)
+					{
+						continue;
+					}
 					// 存在しているマスかチェック
 					if (board[x, y] != 1)
 					{
@@ -288,6 +293,7 @@ public class GameState
 		return clone;
 	}
 
+	// 現在の盤面を文字列で取得
 	public string ToString()
 	{
 		var sb = new StringBuilder();
