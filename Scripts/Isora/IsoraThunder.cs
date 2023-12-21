@@ -322,13 +322,23 @@ public class RuleBaseAI
 	// ルールベースで手を選択
 	public static ValueTuple<int, int, int, int> GetRuleBaseBestMove(GameState gameState)
 	{
-		// 合法手の中から相手に近づく手を選択
+		// 合法手の中から相手に近づき、かつ相手の周囲2マス以内のマスを取り除く手を選択
 		var legalMoves = gameState.GetLegalMoves();
 		var bestMoveIndex = -1;
-		var bestMoveDistance = 1000;
+		var bestMoveDistance = 100;
 		for (int i = 0; i < legalMoves.Count; i++)
 		{
 			var move = legalMoves[i];
+			// 取り除くマスが相手の周囲1マス以内かチェック
+			var removeX = move.Item3;
+			var removeY = move.Item4;
+			var opponentPosX = gameState.GetPlayerPosition(1).Item1;
+			var opponentPosY = gameState.GetPlayerPosition(1).Item2;
+			if (Math.Abs(removeX - opponentPosX) > 1 || Math.Abs(removeY - opponentPosY) > 1)
+			{
+				continue;
+			}
+
 			var distance = Math.Abs(move.Item1 - gameState.GetPlayerPosition(1).Item1) + Math.Abs(move.Item2 - gameState.GetPlayerPosition(1).Item2);
 			if (distance < bestMoveDistance)
 			{
@@ -338,6 +348,7 @@ public class RuleBaseAI
 		}
 
 		return legalMoves[bestMoveIndex];
+
 	}
 }
 
